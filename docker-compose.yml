@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  aesm:
+    #image: initc3/linux-sgx:2.12-ubuntu18.04
+    image: initc3/linux-sgx@sha256:9ca0612f0555bcb890afbeb9b21d57723b2512c68a057ec777d24f756ab2224a
+    devices:
+      - /dev/isgx
+    volumes:
+      - aesmd-socket:/var/run/aesmd
+    user: aesmd
+    #stdin_open: true
+    #tty: true
+    working_dir: /opt/intel/sgx-aesm-service/aesm
+    environment:
+      LD_LIBRARY_PATH: /opt/intel/sgx-aesm-service/aesm
+    command: ./aesm_service --no-daemon
+
+  ra:
+    image: sgx_ra
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - aesm
+    devices:
+      - /dev/isgx
+    volumes:
+      - aesmd-socket:/var/run/aesmd
+    #stdin_open: true
+    #tty: true
+
+volumes:
+  aesmd-socket:
+    driver: local
+    driver_opts:
+      type: "tmpfs"
+      device: "tmpfs"
+      o: "rw"
