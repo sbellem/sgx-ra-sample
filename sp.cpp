@@ -979,7 +979,8 @@ int process_msg3 (MsgIO *msgio, IAS_Connection *ias, sgx_ra_msg1_t *msg1,
 		 * secret between us and the client.
 		 */
 
-		if ( msg4->status == Trusted ) {
+		//if ( msg4->status == Trusted ) {
+		if ( msg4->status == Trusted || msg4->status == NotTrusted_ItsComplicated) {
 			unsigned char hashmk[32], hashsk[32];
 
 			if ( debug ) eprintf("+++ Deriving the MK and SK\n");

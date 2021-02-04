@@ -18,21 +18,9 @@ in the License.
 
 using namespace std;
 
-#ifdef _WIN32
-#pragma comment(lib, "crypt32.lib")
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#else
 #include "config.h"
-#endif
 
-#ifdef _WIN32
-// *sigh*
-# include "vs/client/Enclave_u.h"
-#else
-# include "Enclave_u.h"
-#endif
+#include "Enclave_u.h"
 #if !defined(SGX_HW_SIM)&&!defined(_WIN32)
 #include "sgx_stub.h"
 #endif
@@ -42,15 +30,11 @@ using namespace std;
 #include <time.h>
 #include <sgx_urts.h>
 #include <sys/stat.h>
-#ifdef _WIN32
-#include <intrin.h>
-#include <wincrypt.h>
-#include "win32/getopt.h"
-#else
+
 #include <openssl/evp.h>
 #include <getopt.h>
 #include <unistd.h>
-#endif
+
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 #include <sgx_uae_quote_ex.h>
@@ -68,11 +52,7 @@ using namespace std;
 
 #define MAX_LEN 80
 
-#ifdef _WIN32
-# define strdup(x) _strdup(x)
-#else
-# define _rdrand64_step(x) ({ unsigned char err; asm volatile("rdrand %0; setc %1":"=r"(*x), "=qm"(err)); err; })
-#endif
+#define _rdrand64_step(x) ({ unsigned char err; asm volatile("rdrand %0; setc %1":"=r"(*x), "=qm"(err)); err; })
 
 #ifdef __x86_64__
 #define DEF_LIB_SEARCHPATH "/lib:/lib64:/usr/lib:/usr/lib64"
@@ -124,11 +104,7 @@ char verbose= 0;
 #define CLEAR_OPT(x,y)	x=x&~y
 #define OPT_ISSET(x,y)	x&y
 
-#ifdef _WIN32
-# define ENCLAVE_NAME "Enclave.signed.dll"
-#else
-# define ENCLAVE_NAME "Enclave.signed.so"
-#endif
+#define ENCLAVE_NAME "Enclave.signed.so"
 
 int main (int argc, char *argv[])
 {
@@ -179,10 +155,6 @@ int main (int argc, char *argv[])
 		{"help",		no_argument,		0, 'h'},		
 		{"debug",		no_argument,		0, 'd'},
 		{"epid-gid",	no_argument,		0, 'e'},
-#ifdef _WIN32
-		{"pse-manifest",
-						no_argument,    	0, 'm'},
-#endif
 		{"nonce",		required_argument,	0, 'n'},
 		{"nonce-file",	required_argument,	0, 'N'},
 		{"rand-nonce",	no_argument,		0, 'r'},
@@ -392,15 +364,6 @@ int main (int argc, char *argv[])
 
 	/* Launch the enclave */
 
-#ifdef _WIN32
-	status = sgx_create_enclave(ENCLAVE_NAME, SGX_DEBUG_FLAG,
-		&token, &updated, &eid, 0);
-	if (status != SGX_SUCCESS) {
-		fprintf(stderr, "sgx_create_enclave: %s: %08x\n",
-			ENCLAVE_NAME, status);
-		return 1;
-	}
-#else
 	status = sgx_create_enclave_search(ENCLAVE_NAME,
 		SGX_DEBUG_FLAG, &token, &updated, &eid, 0);
 	if ( status != SGX_SUCCESS ) {
@@ -410,7 +373,6 @@ int main (int argc, char *argv[])
 			fprintf(stderr, "Did you forget to set LD_LIBRARY_PATH?\n");
 		return 1;
 	}
-#endif
 
 	/* Are we attesting, or just spitting out a quote? */
 
@@ -485,17 +447,6 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 		delete msgio;
 		return 1;
 	}
-
-#ifdef _WIN32
-	/* If we asked for a PSE session, did that succeed? */
-	if (b_pse) {
-		if ( pse_status != SGX_SUCCESS ) {
-			fprintf(stderr, "pse_session: %08x\n", pse_status);
-			delete msgio;
-			return 1;
-		}
-	}
-#endif
 
 	/* Did sgx_ra_init() succeed? */
 	if ( sgxrv != SGX_SUCCESS ) {
@@ -663,7 +614,7 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 	msg3 = NULL;
 
 	status = sgx_ra_proc_msg2(ra_ctx, eid,
-		sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2, 
+		sgx_ra_proc_msg2_trusted, sgx_ra_get_msg3_trusted, msg2,
 		sizeof(sgx_ra_msg2_t) + msg2->sig_rl_size,
 	    &msg3, &msg3_sz);
 
@@ -676,13 +627,13 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 
 		delete msgio;
 		return 1;
-	} 
+	}
 
 	if ( debug ) {
 		fprintf(stderr, "+++ msg3_size = %u\n", msg3_sz);
 		fprintf(fplog, "+++ msg3_size = %u\n", msg3_sz);
 	}
-	                          
+
 	if ( verbose ) {
 		dividerWithText(stderr, "Msg3 Details");
 		dividerWithText(fplog, "Msg3 Details");
@@ -698,15 +649,6 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 		fprintf(fplog, "\nmsg3.g_a.gy      = ");
 		print_hexstring(stderr, msg3->g_a.gy, sizeof(msg3->g_a.gy));
 		print_hexstring(fplog, msg3->g_a.gy, sizeof(msg3->g_a.gy));
-#ifdef _WIN32
-		fprintf(stderr, "\nmsg3.ps_sec_prop.sgx_ps_sec_prop_desc = ");
-		fprintf(fplog, "\nmsg3.ps_sec_prop.sgx_ps_sec_prop_desc = ");
-		print_hexstring(stderr, msg3->ps_sec_prop.sgx_ps_sec_prop_desc,
-			sizeof(msg3->ps_sec_prop.sgx_ps_sec_prop_desc));
-		print_hexstring(fplog, msg3->ps_sec_prop.sgx_ps_sec_prop_desc,
-			sizeof(msg3->ps_sec_prop.sgx_ps_sec_prop_desc));
-		fprintf(fplog, "\n");
-#endif
 		fprintf(stderr, "\nmsg3.quote       = ");
 		fprintf(fplog, "\nmsg3.quote       = ");
 		print_hexstring(stderr, msg3->quote, msg3_sz-sizeof(sgx_ra_msg3_t));
@@ -824,7 +766,8 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 	 * provider.
 	 */
 
-	if ( enclaveTrusted == Trusted ) {
+	//if ( enclaveTrusted == Trusted ) {
+	if ( enclaveTrusted == Trusted || NotTrusted_ItsComplicated ) {
 		sgx_status_t key_status, sha_status;
 		sgx_sha256_hash_t mkhash, skhash;
 
@@ -833,7 +776,7 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 		if ( debug ) eprintf("+++ fetching SHA256(MK)\n");
 		status= enclave_ra_get_key_hash(eid, &sha_status, &key_status, ra_ctx,
 			SGX_RA_KEY_MK, &mkhash);
-		if ( debug ) eprintf("+++ ECALL enclage_ra_get_key_hash (MK) ret= 0x%04x\n",
+		if ( debug ) eprintf("+++ ECALL enclave_ra_get_key_hash (MK) ret= 0x%04x\n",
 			status);
 
 		if ( debug ) eprintf("+++ sgx_ra_get_keys (MK) ret= 0x%04x\n", key_status);
@@ -842,7 +785,7 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 		if ( debug ) eprintf("+++ fetching SHA256(SK)\n");
 		status= enclave_ra_get_key_hash(eid, &sha_status, &key_status, ra_ctx,
 			SGX_RA_KEY_SK, &skhash);
-		if ( debug ) eprintf("+++ ECALL enclage_ra_get_key_hash (MK) ret= 0x%04x\n",
+		if ( debug ) eprintf("+++ ECALL enclave_ra_get_key_hash (MK) ret= 0x%04x\n",
 			status);
 
 		if ( debug ) eprintf("+++ sgx_ra_get_keys (MK) ret= 0x%04x\n", key_status);
@@ -908,46 +851,10 @@ int do_quote(sgx_enclave_id_t eid, config_t *config)
 	uint32_t sz= 0;
 	uint32_t flags= config->flags;
 	sgx_quote_sign_type_t linkable= SGX_UNLINKABLE_SIGNATURE;
-#ifdef _WIN32
-	sgx_ps_cap_t ps_cap;
-	char *pse_manifest = NULL;
-	size_t pse_manifest_sz;
-	LPTSTR b64quote = NULL;
-	DWORD sz_b64quote = 0;
-	LPTSTR b64manifest = NULL;
-	DWORD sz_b64manifest = 0;
-#else
 	char  *b64quote= NULL;
 	char *b64manifest = NULL;
-#endif
 
  	if (OPT_ISSET(flags, OPT_LINK)) linkable= SGX_LINKABLE_SIGNATURE;
-
-	/* Platform services info. Win32 only. */
-#ifdef _WIN32
-	if (OPT_ISSET(flags, OPT_PSE)) {
-		status = get_pse_manifest_size(eid, &pse_manifest_sz);
-		if (status != SGX_SUCCESS) {
-			fprintf(stderr, "get_pse_manifest_size: %08x\n",
-				status);
-			return 1;
-		}
-
-		pse_manifest = (char *) malloc(pse_manifest_sz);
-
-		status = get_pse_manifest(eid, &sgxrv, pse_manifest, pse_manifest_sz);
-		if (status != SGX_SUCCESS) {
-			fprintf(stderr, "get_pse_manifest: %08x\n",
-				status);
-			return 1;
-		}
-		if (sgxrv != SGX_SUCCESS) {
-			fprintf(stderr, "get_sec_prop_desc_ex: %08x\n",
-				sgxrv);
-			return 1;
-		}
-	}
-#endif
 
 	/* Get our quote */
 
@@ -1006,51 +913,11 @@ int do_quote(sgx_enclave_id_t eid, config_t *config)
 
 	/* Print our quote */
 
-#ifdef _WIN32
-	// We could also just do ((4 * sz / 3) + 3) & ~3
-	// but it's cleaner to use the API.
-
-	if (CryptBinaryToString((BYTE *) quote, sz, CRYPT_STRING_BASE64|CRYPT_STRING_NOCRLF, NULL, &sz_b64quote) == FALSE) {
-		fprintf(stderr, "CryptBinaryToString: could not get Base64 encoded quote length\n");
-		return 1;
-	}
-
-	b64quote = (LPTSTR)(malloc(sz_b64quote));
-	if (b64quote == NULL) {
-		perror("malloc");
-		return 1;
-	}
-	if (CryptBinaryToString((BYTE *) quote, sz, CRYPT_STRING_BASE64|CRYPT_STRING_NOCRLF, b64quote, &sz_b64quote) == FALSE) {
-		fprintf(stderr, "CryptBinaryToString: could not get Base64 encoded quote length\n");
-		return 1;
-	}
-
-	if (OPT_ISSET(flags, OPT_PSE)) {
-		if (CryptBinaryToString((BYTE *)pse_manifest, (uint32_t)(pse_manifest_sz), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, NULL, &sz_b64manifest) == FALSE) {
-			fprintf(stderr, "CryptBinaryToString: could not get Base64 encoded manifest length\n");
-			return 1;
-		}
-
-		b64manifest = (LPTSTR)(malloc(sz_b64manifest));
-		if (b64manifest == NULL) {
-			free(b64quote);
-			perror("malloc");
-			return 1;
-		}
-
-		if (CryptBinaryToString((BYTE *)pse_manifest, (uint32_t)(pse_manifest_sz), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, b64manifest, &sz_b64manifest) == FALSE) {
-			fprintf(stderr, "CryptBinaryToString: could not get Base64 encoded manifest length\n");
-			return 1;
-		}
-	}
-
-#else
 	b64quote= base64_encode((char *) quote, sz);
 	if ( b64quote == NULL ) {
 		eprintf("Could not base64 encode quote\n");
 		return 1;
 	}
-#endif
 
 	printf("{\n");
 	printf("\"isvEnclaveQuote\":\"%s\"", b64quote);
@@ -1060,11 +927,6 @@ int do_quote(sgx_enclave_id_t eid, config_t *config)
 		printf("\"");
 	}
 
-#ifdef _WIN32
-	if (OPT_ISSET(flags, OPT_PSE)) {
-		printf(",\n\"pseManifest\":\"%s\"", b64manifest);	
-	}
-#endif
 	printf("\n}\n");
 
 #ifdef SGX_HW_SIM
@@ -1072,9 +934,6 @@ int do_quote(sgx_enclave_id_t eid, config_t *config)
 #endif
 
 	free(b64quote);
-#ifdef _WIN32
-	if ( b64manifest != NULL ) free(b64manifest);
-#endif
 
 	return 0;
 
@@ -1094,7 +953,7 @@ sgx_status_t sgx_create_enclave_search (const char *filename, const int edebug,
 
 	/* Is filename an absolute path? */
 
-	if ( filename[0] == '/' ) 
+	if ( filename[0] == '/' )
 		return sgx_create_enclave(filename, edebug, token, updated, eid, attr);
 
 	/* Is the enclave in the current working directory? */
@@ -1106,7 +965,7 @@ sgx_status_t sgx_create_enclave_search (const char *filename, const int edebug,
 
 	if ( file_in_searchpath(filename, getenv("LD_LIBRARY_PATH"), epath, PATH_MAX) )
 		return sgx_create_enclave(epath, edebug, token, updated, eid, attr);
-		
+
 	/* Search the paths in DT_RUNPATH */
 
 	if ( file_in_searchpath(filename, getenv("DT_RUNPATH"), epath, PATH_MAX) )
@@ -1187,9 +1046,6 @@ void usage ()
 	fprintf(stderr, "  -e, --epid-gid           Get the EPID Group ID instead of performing\n");
 	fprintf(stderr, "                             an attestation.\n");
 	fprintf(stderr, "  -l, --linkable           Specify a linkable quote (default: unlinkable)\n");
-#ifdef _WIN32
-	fprintf(stderr, "  -m, --pse-manifest       Include the PSE manifest in the quote\n");
-#endif
 	fprintf(stderr, "  -n, --nonce=HEXSTRING    Set a nonce from a 32-byte ASCII hex string\n");
 	fprintf(stderr, "  -p, --pubkey=HEXSTRING   Specify the public key of the service provider\n");
 	fprintf(stderr, "                             as an ASCII hex string instead of using the\n");
