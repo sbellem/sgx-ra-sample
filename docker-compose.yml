@@ -24,18 +24,19 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - aesm
+      - ra.server
     devices:
       - /dev/isgx
     volumes:
       - aesmd-socket:/var/run/aesmd
-    command: ./run-client ra.server
+    command: ./run-client --debug ra.server
 
   ra.server:
     image: sgx_ra
     build:
       context: .
       dockerfile: Dockerfile
-    command: ./run-server
+    command: ./run-server --debug
 
 volumes:
   aesmd-socket:

@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
                 automake \
                 xxd \
                 iputils-ping \
+                vim \
         && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/sgx-ra
