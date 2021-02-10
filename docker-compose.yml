@@ -29,14 +29,14 @@ services:
       - /dev/isgx
     volumes:
       - aesmd-socket:/var/run/aesmd
-    command: ./run-client --debug ra.server
+    command: ./run-client --debug -n c9a1694e713024e4b10494c3698e26b4 ra.server
 
   ra.server:
     image: sgx_ra
     build:
       context: .
       dockerfile: Dockerfile
-    command: ./run-server --debug
+    command: ./run-server --debug --mrsigner bd71c6380ef77c5417e8b2d1ce2d4b6504b9f418e5049342440cfff2443d95bd
 
 volumes:
   aesmd-socket:
