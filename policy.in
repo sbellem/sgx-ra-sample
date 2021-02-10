@@ -12,6 +12,10 @@
 # from using the remote service.
 MRSIGNER=@MRSIGNER@
 
+# This hex string should match the measurement of the enclave code, etc.
+# TODO document properly
+MRENCLAVE=f19de84787f1a90ad7bc2d4c2fd952e05545c6f177e8b10b112a4cef31ba0454
+
 # The product ID for the enclave. This must match the ProdId in the
 # enclave confgiruation file. 
 PRODID=0
