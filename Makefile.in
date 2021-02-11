@@ -86,7 +86,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = client$(EXEEXT) sp$(EXEEXT) mrsigner$(EXEEXT)
+bin_PROGRAMS = client$(EXEEXT) sp$(EXEEXT) mrsigner$(EXEEXT) mrenclave$(EXEEXT)
 @AGENT_CURL_TRUE@am__append_1 = agent_curl.cpp
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -116,9 +116,14 @@ client_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(client_LDFLAGS) \
 	$(LDFLAGS) -o $@
 am_mrsigner_OBJECTS = mrsigner.$(OBJEXT) crypto.$(OBJEXT) \
 	hexutil.$(OBJEXT)
+am_mrenclave_OBJECTS = mrenclave.$(OBJEXT) crypto.$(OBJEXT) \
+	hexutil.$(OBJEXT)
 mrsigner_OBJECTS = $(am_mrsigner_OBJECTS)
+mrenclave_OBJECTS = $(am_mrenclave_OBJECTS)
 mrsigner_DEPENDENCIES =
 mrsigner_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
+	$(mrsigner_LDFLAGS) $(LDFLAGS) -o $@
+mrenclave_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(mrsigner_LDFLAGS) $(LDFLAGS) -o $@
 am__sp_SOURCES_DIST = sp.cpp agent_wget.cpp iasrequest.cpp \
 	enclave_verify.c byteorder.c common.cpp crypto.c hexutil.c \
@@ -172,8 +177,8 @@ am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = $(client_SOURCES) $(nodist_client_SOURCES) \
-	$(mrsigner_SOURCES) $(sp_SOURCES)
-DIST_SOURCES = $(client_SOURCES) $(mrsigner_SOURCES) \
+	$(mrsigner_SOURCES) $(sp_SOURCES) $(mrenclave_SOURCES)
+DIST_SOURCES = $(client_SOURCES) $(mrsigner_SOURCES) $(mrenclave_SOURCES) \
 	$(am__sp_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
@@ -416,6 +421,7 @@ sp_SOURCES = sp.cpp agent_wget.cpp iasrequest.cpp enclave_verify.c \
 	$(common) $(am__append_1)
 EXTRA_sp_DEPENDENCIES = Enclave.signed.so
 mrsigner_SOURCES = mrsigner.cpp crypto.c hexutil.c
+mrenclave_SOURCES = mrenclave.cpp crypto.c hexutil.c
 sp_LDFLAGS = $(AM_LDFLAGS) @OPENSSL_LDFLAGS@ @CURL_LDFLAGS@
 mrsigner_LDFLAGS = $(AM_LDFLAGS) @OPENSSL_LDFLAGS@
 client_LDADD = -l$(SGX_URTS_LIB) -lsgx_ukey_exchange -lcrypto \
@@ -534,6 +540,10 @@ mrsigner$(EXEEXT): $(mrsigner_OBJECTS) $(mrsigner_DEPENDENCIES) $(EXTRA_mrsigner
 	@rm -f mrsigner$(EXEEXT)
 	$(AM_V_CXXLD)$(mrsigner_LINK) $(mrsigner_OBJECTS) $(mrsigner_LDADD) $(LIBS)
 
+mrenclave$(EXEEXT): $(mrenclave_OBJECTS) $(mrsigner_DEPENDENCIES) $(EXTRA_mrsigner_DEPENDENCIES)
+	@rm -f mrenclave$(EXEEXT)
+	$(AM_V_CXXLD)$(mrenclave_LINK) $(mrenclave_OBJECTS) $(mrsigner_LDADD) $(LIBS)
+
 sp$(EXEEXT): $(sp_OBJECTS) $(sp_DEPENDENCIES) $(EXTRA_sp_DEPENDENCIES) 
 	@rm -f sp$(EXEEXT)
 	$(AM_V_CXXLD)$(sp_LINK) $(sp_OBJECTS) $(sp_LDADD) $(LIBS)
@@ -558,6 +568,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iasrequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logfile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mrsigner.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mrenclave.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/msgio.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quote_size.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sgx_detect_linux.Po@am__quote@
@@ -1039,7 +1050,7 @@ Enclave/Enclave.signed.so:
 
 server: sp
 
-policy: mrsigner policy.in Enclave.signed.so
+policy: mrsigner mrenclave policy.in Enclave.signed.so
 	$(SGX_SIGN) dump -cssfile enclave_sigstruct_raw -dumpfile /dev/null -enclave Enclave.signed.so
 	sed -e "s^@MRSIGNER@^`./mrsigner.sh enclave_sigstruct_raw`^" policy.in > policy
 	rm -f enclave_sigstruct_raw

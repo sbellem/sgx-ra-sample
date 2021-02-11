@@ -63,7 +63,7 @@ CLEANFILES = Enclave_u.c Enclave_u.h Enclave.edl Enclave.signed.so \
 
 server: sp
 
-bin_PROGRAMS = client sp mrsigner
+bin_PROGRAMS = client sp mrsigner mrenclave
 
 ## You can't use $(wildcard ...) with automake so all source files 
 ## have to be explicitly listed.
@@ -93,15 +93,17 @@ endif
 ## mrsigner (helper app)
 
 mrsigner_SOURCES = mrsigner.cpp crypto.c hexutil.c
+mrenclave_SOURCES = mrenclave.cpp crypto.c hexutil.c
 
 ## Extract the enclave SIGSTRUCT and use it to calculate MRSIGNER
-policy: mrsigner policy.in Enclave.signed.so
+policy: mrsigner mrenclave policy.in Enclave.signed.so
 	$(SGX_SIGN) dump -cssfile enclave_sigstruct_raw -dumpfile /dev/null -enclave Enclave.signed.so
 	sed -e "s^@MRSIGNER@^`./mrsigner.sh enclave_sigstruct_raw`^" policy.in > policy
 	rm -f enclave_sigstruct_raw
 
 sp_LDFLAGS= $(AM_LDFLAGS) @OPENSSL_LDFLAGS@ @CURL_LDFLAGS@
 mrsigner_LDFLAGS= $(AM_LDFLAGS) @OPENSSL_LDFLAGS@
+#mrenclave_LDFLAGS= $(AM_LDFLAGS) @OPENSSL_LDFLAGS@
 
 ## Library flags. At minimum, an Intel SGX application will need:
 ##
@@ -114,6 +116,7 @@ client_LDADD=-l$(SGX_URTS_LIB) -lsgx_ukey_exchange -lcrypto \
 	-l:libsgx_capable.a -lpthread -ldl
 
 mrsigner_LDADD=-lcrypto
+#mrenclave_LDADD=-lcrypto
 
 sp_LDADD=-lcrypto @CURL_LIBS@
 
