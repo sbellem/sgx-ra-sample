@@ -17,6 +17,7 @@ in the License.
 
 
 using namespace std;
+#include <iostream>
 
 #include "config.h"
 
@@ -38,6 +39,8 @@ using namespace std;
 #include <sgx_uae_service.h>
 #include <sgx_ukey_exchange.h>
 #include <sgx_uae_quote_ex.h>
+//#include <sgx_tcrypto.h>
+//#include "sgx_tcrypto.h"
 #include <string>
 #include "common.h"
 #include "protocol.h"
@@ -402,7 +405,7 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 	uint32_t msg3_sz;
 	uint32_t flags= config->flags;
 	sgx_ra_context_t ra_ctx= 0xdeadbeef;
-	int rv;
+    int rv;
 	MsgIO *msgio;
 	size_t msg4sz = 0;
 	int enclaveTrusted = NotTrusted; // Not Trusted
@@ -754,9 +757,9 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 			if( update_info.ucodeUpdate )  {
 				eprintf("  * The CPU Microcode needs to be updated.  Contact your OEM for a platform\n");
 				eprintf("    BIOS Update.\n");
-			}                                           
+			}
 			eprintf("\n");
-			edivider();      
+			edivider();
 		}
 	}
 
@@ -842,7 +845,7 @@ int do_attestation (sgx_enclave_id_t eid, config_t *config)
 
 int do_quote(sgx_enclave_id_t eid, config_t *config)
 {
-	sgx_status_t status, sgxrv;
+	sgx_status_t status, sgxrv, xstatus;
 	sgx_quote_t *quote;
 	sgx_report_t report;
 	sgx_report_t qe_report;
@@ -872,7 +875,30 @@ int do_quote(sgx_enclave_id_t eid, config_t *config)
 		exit(0);
 	}
 
-	status= get_report(eid, &sgxrv, &report, &target_info);
+    sgx_report_data_t report_data = {{0}};
+    //uint8_t[]: {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64, 0x21};
+    string msg = "Hello World!";
+	sgx_status_t sha_status;
+	sgx_sha256_hash_t msghash;
+	xstatus = enclave_ra_get_msg_hash(eid, &sha_status, (const uint8_t *)msg.c_str(), &msghash, msg.size());
+	print_hexstring(stderr, msghash, sizeof(msghash));
+    // TODO: set report data in enclave
+    cout << "size of msghash: " << sizeof(msghash) << endl;
+    fprintf(stderr, "\nreport_data: %08x\n", report_data);
+    const uint8_t z[] = {
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f,
+        0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f
+    };
+    memcpy(report_data.d, z, sizeof(z));
+    //report_data.d = z;
+
+	status = get_report(eid, &sgxrv, &report, &target_info, &report_data);
 	if ( status != SGX_SUCCESS ) {
 		fprintf(stderr, "get_report: %08x\n", status);
 		return 1;

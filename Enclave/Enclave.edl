@@ -32,7 +32,7 @@ enclave {
 #endif
 
 		public sgx_status_t get_report([out] sgx_report_t *report,
-			[in] sgx_target_info_t *target_info);
+			[in] sgx_target_info_t *target_info, [in] sgx_report_data_t *report_data);
 
 #ifdef _WIN32
 		public size_t get_pse_manifest_size();
@@ -49,6 +49,9 @@ enclave {
 		public sgx_status_t enclave_ra_get_key_hash(
 			[out] sgx_status_t *get_keys_status, sgx_ra_context_t ctx,
 			sgx_ra_key_type_t type, [out] sgx_sha256_hash_t *hash);
+		
+        public sgx_status_t enclave_ra_get_msg_hash(
+            [in, count=len] const uint8_t *msg, [out] sgx_sha256_hash_t *hash, uint32_t len);
 
 		public sgx_status_t enclave_ra_close(sgx_ra_context_t ctx);
 

@@ -79,12 +79,19 @@ static const sgx_ec256_public_t def_service_public_key = {
  * to deal with that.
  */
 
-sgx_status_t get_report(sgx_report_t *report, sgx_target_info_t *target_info)
+//sgx_status_t sgx_create_report(
+//  const sgx_target_info_t *target_info,
+//  const sgx_report_data_t *report_data,
+//  sgx_report_t *report
+//r
+
+sgx_status_t get_report(sgx_report_t *report, sgx_target_info_t *target_info, sgx_report_data_t *report_data)
 {
 #ifdef SGX_HW_SIM
 	return sgx_create_report(NULL, NULL, report);
 #else
-	return sgx_create_report(target_info, NULL, report);
+	//return sgx_create_report(target_info, NULL, report);
+	return sgx_create_report(target_info, report_data, report);
 #endif
 }
 
@@ -183,13 +190,27 @@ sgx_status_t enclave_ra_get_key_hash(sgx_status_t *get_keys_ret,
 
 	/* Now generate a SHA hash */
 
-	sha_ret= sgx_sha256_msg((const uint8_t *) &k, sizeof(k), 
+	sha_ret= sgx_sha256_msg((const uint8_t *) &k, sizeof(k),
 		(sgx_sha256_hash_t *) hash); // Sigh.
 
 	/* Let's be thorough */
 
 	memset(k, 0, sizeof(k));
 
+	return sha_ret;
+}
+
+/*
+ * Return a SHA256 hash of the given message.
+ */
+sgx_status_t enclave_ra_get_msg_hash(const uint8_t *msg, sgx_sha256_hash_t *hash, uint32_t len)
+{
+    // TODO: set report data
+	sgx_status_t sha_ret;
+	sha_ret = sgx_sha256_msg(
+            msg,
+            len,
+            (sgx_sha256_hash_t *) hash);
 	return sha_ret;
 }
 

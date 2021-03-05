@@ -29,7 +29,8 @@ services:
       - /dev/isgx
     volumes:
       - aesmd-socket:/var/run/aesmd
-    command: ./run-client --debug -n c9a1694e713024e4b10494c3698e26b4 ra.server
+    #command: ./run-client --debug -n c9a1694e713024e4b10494c3698e26b4 ra.server
+    command: ./run-client --debug -q
 
   ra.server:
     image: sgx_ra
