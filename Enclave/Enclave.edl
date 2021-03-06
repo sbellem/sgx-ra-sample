@@ -53,6 +53,13 @@ enclave {
         public sgx_status_t enclave_ra_get_msg_hash(
             [in, count=len] const uint8_t *msg, [out] sgx_sha256_hash_t *hash, uint32_t len);
 
+        public sgx_status_t enclave_set_report_data([out] sgx_report_data_t *report_data);
+        public sgx_status_t ecall_key_gen_and_seal(
+            [out, size=pubkey_size] char *pubkey,
+            size_t pubkey_size,
+            [out, size=sealedprivkey_size] char *sealedprivkey,
+            size_t sealedprivkey_size);
+
 		public sgx_status_t enclave_ra_close(sgx_ra_context_t ctx);
 
 	};
